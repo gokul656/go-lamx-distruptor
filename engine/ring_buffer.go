@@ -1,34 +1,30 @@
-package main
+package engine
 
 type RingBuffer struct {
 	rPointer   int   // Read pointer
 	wPointer   int   // Write pointer
-	bufferSize int   // Total size of the buffer
+	bufferSize int   // Total size of the buffer [must be powers of 2]
 	buffer     []int // Underlying array for the buffer
 }
 
-// Read data from the ring buffer
 func (rb *RingBuffer) Read() *int {
 	if rb.IsEmpty() {
-		return nil // Return nil if the buffer is empty
+		return nil
 	}
 
-	// Read data from the current read pointer
 	data := rb.buffer[rb.rPointer%rb.bufferSize]
-	rb.rPointer++ // Advance the read pointer
+	rb.rPointer++
 
 	return &data
 }
 
-// Write data to the ring buffer
 func (rb *RingBuffer) Write(data int) bool {
 	if rb.IsFull() {
-		return false // Return false if the buffer is full
+		return false
 	}
 
-	// Write data at the current write pointer
 	rb.buffer[rb.wPointer%rb.bufferSize] = data
-	rb.wPointer++ // Advance the write pointer
+	rb.wPointer++
 
 	return true
 }
@@ -38,17 +34,14 @@ func (rb *RingBuffer) SpaceForReading() int {
 	return rb.wPointer - rb.rPointer
 }
 
-// Check if the ring buffer is empty
 func (rb *RingBuffer) IsEmpty() bool {
 	return rb.rPointer == rb.wPointer
 }
 
-// Check if the ring buffer is full
 func (rb *RingBuffer) IsFull() bool {
 	return rb.SpaceForReading() == rb.bufferSize
 }
 
-// Initialize a new ring buffer
 func NewRingBuffer(bufferSize int) *RingBuffer {
 	return &RingBuffer{
 		rPointer:   0,
