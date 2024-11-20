@@ -6,8 +6,8 @@ import (
 	"sync"
 )
 
-type HandlerFunc interface {
-	Process(data int) error
+type HandlerFunc[T any] interface {
+	Process(data T) error
 }
 
 type Distruptor interface {
@@ -22,13 +22,12 @@ type Distruptor interface {
 	HandleException(err error) // Handle exceptions with actual error messages
 }
 
-type DistruptorEngine struct {
-	ringbuffer *RingBuffer
-	handler    HandlerFunc
+type DistruptorEngine[T any] struct {
+	ringbuffer *RingBuffer[T]
+	handler    HandlerFunc[T]
 }
 
-func (de *DistruptorEngine) Start(wg *sync.WaitGroup) {
-	fmt.Println("starting disruptor engine")
+func (de *DistruptorEngine[T]) Start(wg *sync.WaitGroup) {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -40,20 +39,19 @@ func (de *DistruptorEngine) Start(wg *sync.WaitGroup) {
 	}()
 }
 
-func (de *DistruptorEngine) Stop() error {
-	fmt.Println("stopping disruptor engine...")
+func (de *DistruptorEngine[T]) Stop() error {
 	return nil
 }
 
-func (de *DistruptorEngine) IsFull() bool {
+func (de *DistruptorEngine[T]) IsFull() bool {
 	return de.ringbuffer.IsFull()
 }
 
-func (de *DistruptorEngine) IsEmpty() bool {
+func (de *DistruptorEngine[T]) IsEmpty() bool {
 	return de.ringbuffer.IsEmpty()
 }
 
-func (de *DistruptorEngine) Publish(data int) error {
+func (de *DistruptorEngine[T]) Publish(data T) error {
 	if de.IsFull() {
 		return errors.New("unable to publish, buffer is full")
 	}
@@ -61,7 +59,7 @@ func (de *DistruptorEngine) Publish(data int) error {
 	return nil
 }
 
-func (de *DistruptorEngine) Consume() error {
+func (de *DistruptorEngine[T]) Consume() error {
 	if de.IsEmpty() {
 		return errors.New("unable to consume, buffer is empty")
 	}
@@ -73,21 +71,21 @@ func (de *DistruptorEngine) Consume() error {
 	return nil
 }
 
-func (de *DistruptorEngine) GetBufferSize() int {
+func (de *DistruptorEngine[T]) GetBufferSize() int {
 	return de.ringbuffer.bufferSize
 }
 
-func (de *DistruptorEngine) GetPendingCount() int {
+func (de *DistruptorEngine[T]) GetPendingCount() int {
 	return de.ringbuffer.SpaceForReading()
 }
 
-func (de *DistruptorEngine) HandleException(err error) {
+func (de *DistruptorEngine[T]) HandleException(err error) {
 	fmt.Printf("error occurred: %v\n", err)
 }
 
-func NewDistruptor(bufferSize int, handler HandlerFunc) *DistruptorEngine {
-	return &DistruptorEngine{
-		ringbuffer: NewRingBuffer(bufferSize),
+func NewDistruptor[T any](bufferSize int, handler HandlerFunc[T]) *DistruptorEngine[T] {
+	return &DistruptorEngine[T]{
+		ringbuffer: NewRingBuffer[T](bufferSize),
 		handler:    handler,
 	}
 }
