@@ -1,21 +1,49 @@
 package main
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+
+	"github.com/gokul656/go-lmax-distruptor/engine"
+)
 
 func main() {
-	ringBuffer := NewRingBuffer(10)
-	ringBuffer.Write(1)
-	ringBuffer.Write(2)
-	ringBuffer.Write(3)
+	wg := &sync.WaitGroup{}
+	handler := &EventHandler{name: "EventHandler"}
+	engine := engine.NewDistruptor(8, handler)
 
-	fmt.Printf("read: %v\n", *ringBuffer.Read()) // 1
-	fmt.Printf("read: %v\n", *ringBuffer.Read()) // 2
-	fmt.Printf("read: %v\n", *ringBuffer.Read()) // 3
+	wg.Add(2)
 
-	fmt.Printf("write: %v\n", ringBuffer.Write(4))
-	fmt.Printf("write: %v\n", ringBuffer.Write(5))
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 8; i++ {
+			if err := engine.Publish(i); err != nil {
+				fmt.Printf("error publishing data: %v\n", err)
+				break // Exit if there's an error
+			}
+		}
+	}()
 
-	fmt.Printf("read: %v\n", *ringBuffer.Read()) // 4
-	fmt.Printf("read: %v\n", *ringBuffer.Read()) // 5
-	fmt.Printf("read: %v\n", ringBuffer.Read())  // nil
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 8; i++ {
+			if err := engine.Consume(); err != nil {
+				fmt.Printf("error consuming data: %v\n", err)
+				break // Exit if there's an error
+			}
+		}
+	}()
+
+	engine.Start(wg)
+	wg.Wait()
+	engine.Stop()
+}
+
+type EventHandler struct {
+	name string
+}
+
+func (e *EventHandler) Process(data int) error {
+	fmt.Printf("Processed event from [%s]: %d\n", e.name, data)
+	return nil
 }
